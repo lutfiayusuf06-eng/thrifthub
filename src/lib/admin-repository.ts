@@ -188,9 +188,12 @@ function mapProduct(row: AdminProductRow): AdminProduct {
 }
 
 export async function getAdminProducts(limit: number | null = 250): Promise<AdminProduct[]> {
+  if (limit !== null && (!Number.isSafeInteger(limit) || limit <= 0)) {
+    throw new RangeError('Product limit must be a positive integer or null.')
+  }
+
   const orderSchemaReady = await isPublicOrderSchemaReady()
-  const limitClause = limit === null ? '' : 'LIMIT ?'
-  const values = limit === null ? [] : [limit]
+  const limitClause = limit === null ? '' : `LIMIT ${limit}`
   const [rows] = await getPool().execute<AdminProductRow[]>(
     `SELECT code, name, category, size, product_color, measurements, purchase_cost, price,
             condition_note, image_url, image_alt, image_tone, photo_mood,
@@ -208,7 +211,6 @@ export async function getAdminProducts(limit: number | null = 250): Promise<Admi
      FROM products
      ORDER BY created_at DESC
      ${limitClause}`,
-    values,
   )
   return rows.map(mapProduct)
 }
