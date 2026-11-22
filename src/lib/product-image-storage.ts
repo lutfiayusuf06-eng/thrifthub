@@ -72,6 +72,16 @@ export async function removeProductImage(image: PreparedProductImage) {
   }
 }
 
+function parseProductPrice(value: string): number {
+  const normalized = value.trim()
+  if (!/^\d+$/.test(normalized) && !/^\d{1,3}(?:\.\d{3})+$/.test(normalized)) {
+    return Number.NaN
+  }
+
+  const price = Number(normalized.replace(/\./g, ''))
+  return Number.isSafeInteger(price) ? price : Number.NaN
+}
+
 export function productInputFromForm(
   form: FormData,
   imageUrl: string,
@@ -89,7 +99,7 @@ export function productInputFromForm(
     productColor: value('productColor'),
     measurements: value('measurements'),
     purchaseCost: Number(value('purchaseCost')),
-    price: Number(value('price')),
+    price: parseProductPrice(value('price')),
     conditionNote: value('conditionNote'),
     imageUrl,
     imageAlt: value('imageAlt'),
