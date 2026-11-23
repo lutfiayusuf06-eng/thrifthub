@@ -4,7 +4,7 @@ import type { PoolConnection } from 'mysql2/promise'
 import { getPool } from '@/lib/db'
 
 type SchemaRow = RowDataPacket & { column_name: string }
-type TriggerRow = RowDataPacket & { trigger_name: string }
+type IndexRow = RowDataPacket & { index_name: string }
 type ProductRow = RowDataPacket & {
   code: string
   name: string
@@ -83,13 +83,18 @@ export async function isPublicOrderSchemaReady() {
        )`,
   )
   if (columns.length !== 4) return false
-  const [triggers] = await getPool().execute<TriggerRow[]>(
-    `SELECT TRIGGER_NAME AS trigger_name
-     FROM information_schema.TRIGGERS
-     WHERE TRIGGER_SCHEMA = DATABASE()
-       AND TRIGGER_NAME IN ('trg_sales_origin_creator_insert', 'trg_sales_origin_creator_update')`,
+  const [indexes] = await getPool().execute<IndexRow[]>(
+    `SELECT INDEX_NAME AS index_name
+     FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE()
+       AND TABLE_NAME = 'sale_transactions'
+     GROUP BY INDEX_NAME
+     HAVING MAX(NON_UNIQUE) = 0
+       AND COUNT(*) = 1
+       AND MAX(CASE WHEN COLUMN_NAME = 'public_request_key' THEN 1 ELSE 0 END) = 1
+     LIMIT 1`,
   )
-  return triggers.length === 2
+  return indexes.length === 1
 }
 
 export async function isPublicOrderCustomerSchemaReady() {
