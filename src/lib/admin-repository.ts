@@ -246,10 +246,13 @@ export async function getAdminProductSummary(): Promise<AdminProductSummary> {
 }
 
 export async function getAdminSales(limit: number | null = 50): Promise<AdminSale[]> {
+  if (limit !== null && (!Number.isSafeInteger(limit) || limit <= 0)) {
+    throw new RangeError('Sales limit must be a positive integer or null.')
+  }
+
   const orderSchemaReady = await isPublicOrderSchemaReady()
   const customerSchemaReady = await isPublicOrderCustomerSchemaReady()
-  const limitClause = limit === null ? '' : 'LIMIT ?'
-  const values = limit === null ? [] : [limit]
+  const limitClause = limit === null ? '' : `LIMIT ${limit}`
   const [rows] = await getPool().execute<AdminSaleRow[]>(
     `SELECT id, source, ${orderSchemaReady ? 'origin' : "'pos' AS origin"}, status, total_amount, created_at, paid_at,
             ${customerSchemaReady ? 'payment_method' : 'NULL AS payment_method'},
@@ -258,7 +261,6 @@ export async function getAdminSales(limit: number | null = 50): Promise<AdminSal
      FROM sale_transactions
      ORDER BY created_at DESC
      ${limitClause}`,
-    values,
   )
   return rows.map((row) => ({
     id: row.id,
